@@ -15,7 +15,7 @@ HEALTH_BEHAVIOR_SCHEMA = {
                     "properties": {
                         "food_name": {
                             "type": "string",
-                            "description": "食物名称，如：米饭、苹果、牛奶等"
+                            "description": "所有涉及到的食物名称+数量的总体说明，如：1碗米饭、2个苹果和1个香蕉等"
                         },
                         "calories": {
                             "type": "number",
@@ -64,7 +64,7 @@ HEALTH_BEHAVIOR_PROMPT_TEMPLATE = """请分析用户的输入是否与健康营�
    - 相关(relevant)：用户提到了具体的食物、饮品、营养补充剂、进餐行为等
    - 不相关(unrelevant)：用户询问健康知识、运动建议、一般性咨询等，但没有涉及具体的饮食行为
 
-2. 如果相关(type: "relevant")，请提取或估算营养信息：
+2. 如果相关(type: "relevant")，请提取或估算营养信息，如果是多个食物，那么计算calories、protein、carbs、fat的总量：
    - food_name: 具体的食物名称，如"白米饭"、"苹果"、"牛奶"等
    - calories: 热量(千卡)，基于中国常见食物营养数据和常规份量估算
    - protein: 蛋白质(克)，保留1位小数
