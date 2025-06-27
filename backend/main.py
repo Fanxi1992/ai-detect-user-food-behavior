@@ -10,6 +10,7 @@ from typing import List, Optional
 
 from database import Database, Message as DBMessage
 from models import ChatRequest, ChatResponse, Message
+from openrouter_service import OpenRouterService
 
 app = FastAPI(title="AI Chatbot API", version="1.0.0")
 
@@ -22,8 +23,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 初始化数据库
+# 初始化数据库和OpenRouter服务
 db = Database()
+openrouter = OpenRouterService()
 
 @app.on_event("startup")
 async def startup_event():
@@ -37,6 +39,15 @@ async def root():
 async def health_check():
     return {"status": "healthy", "timestamp": datetime.now()}
 
+@app.get("/api/config")
+async def config_check():
+    """检查配置状态"""
+    return {
+        "openrouter_configured": openrouter.is_api_key_configured(),
+        "default_model": openrouter.default_model,
+        "timestamp": datetime.now()
+    }
+
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
     """非流式聊天接口"""
@@ -48,8 +59,18 @@ async def chat(request: ChatRequest):
             is_user=True
         )
         
-        # 模拟AI回复（后续替换为真实LLM调用）
-        ai_response = f"收到您的消息：{request.message}。这是一个模拟的AI回复。"
+        # 获取对话历史
+        history = await db.get_messages(request.session_id, limit=10)
+        
+        # 格式化消息给OpenRouter
+        messages = openrouter.format_messages([
+            {"content": msg.content, "is_user": msg.is_user} 
+            for msg in history[:-1]  # 排除刚添加的用户消息
+        ])
+        messages.append({"role": "user", "content": request.message})
+        
+        # 调用OpenRouter获取AI回复
+        ai_response = await openrouter.chat_completion(messages)
         
         # 保存AI回复
         ai_message = await db.save_message(
@@ -79,37 +100,61 @@ async def chat_stream(request: ChatRequest):
         )
         
         async def generate_stream():
-            # 模拟AI流式回复
-            ai_responses = [
-                "这是一个",
-                "流式的",
-                "AI回复。",
-                "每个部分",
-                "会逐步",
-                "发送给",
-                "前端。",
-                f"\n\n您刚才说：{request.message}",
-                "\n\n我理解了您的问题，",
-                "让我来详细回答..."
-            ]
-            
-            full_response = ""
-            for chunk in ai_responses:
-                full_response += chunk
-                # 发送数据块
-                yield f"data: {json.dumps({'content': chunk, 'done': False})}\n\n"
-                # 模拟处理延迟
-                await asyncio.sleep(0.2)
-            
-            # 保存完整的AI回复
-            await db.save_message(
-                session_id=request.session_id,
-                content=full_response,
-                is_user=False
-            )
-            
-            # 发送结束标志
-            yield f"data: {json.dumps({'content': '', 'done': True})}\n\n"
+            try:
+                # 获取对话历史
+                history = await db.get_messages(request.session_id, limit=10)
+                
+                # 格式化消息给OpenRouter (排除刚添加的用户消息)
+                messages = openrouter.format_messages([
+                    {"content": msg.content, "is_user": msg.is_user} 
+                    for msg in history[:-1]
+                ])
+                messages.append({"role": "user", "content": request.message})
+                
+                # 检查API密钥是否配置
+                if not openrouter.is_api_key_configured():
+                    error_msg = "⚠️ 请配置OPENROUTER_API_KEY环境变量以使用真实的AI模型"
+                    yield f"data: {json.dumps({'content': error_msg, 'done': False})}\n\n"
+                    yield f"data: {json.dumps({'content': '', 'done': True})}\n\n"
+                    
+                    # 保存错误消息
+                    await db.save_message(
+                        session_id=request.session_id,
+                        content=error_msg,
+                        is_user=False
+                    )
+                    return
+                
+                # 调用OpenRouter流式API
+                full_response = ""
+                async for chunk in openrouter.chat_completion_stream(messages):
+                    if chunk:
+                        full_response += chunk
+                        # 发送数据块
+                        yield f"data: {json.dumps({'content': chunk, 'done': False})}\n\n"
+                
+                # 保存完整的AI回复
+                if full_response.strip():
+                    await db.save_message(
+                        session_id=request.session_id,
+                        content=full_response,
+                        is_user=False
+                    )
+                
+                # 发送结束标志
+                yield f"data: {json.dumps({'content': '', 'done': True})}\n\n"
+                
+            except Exception as stream_error:
+                error_message = f"❌ 流式处理错误: {str(stream_error)}"
+                yield f"data: {json.dumps({'content': error_message, 'done': False})}\n\n"
+                yield f"data: {json.dumps({'content': '', 'done': True})}\n\n"
+                
+                # 保存错误消息
+                await db.save_message(
+                    session_id=request.session_id,
+                    content=error_message,
+                    is_user=False
+                )
         
         return StreamingResponse(
             generate_stream(),
