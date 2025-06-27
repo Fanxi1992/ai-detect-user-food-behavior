@@ -114,6 +114,9 @@ const ChatInput: React.FC = () => {
     const { messages } = useChatStore.getState();
     useChatStore.setState({ messages: [...messages, userMessage] });
     
+    // 立即显示思考动画
+    setMessageAnimation(userMessageId, true);
+    
     // 开始流式响应
     startStreaming();
     
@@ -141,8 +144,8 @@ const ChatInput: React.FC = () => {
         
         addMessage(`❌ ${errorMessage}`, false);
         finishStreaming();
-        setShowingAnimation(false);
-        setPendingNutritionCard(null);
+        // 清除动画状态
+        setMessageAnimation(userMessageId, false);
       },
       // 健康行为检测回调
       (healthBehaviorData: any) => {
@@ -152,11 +155,12 @@ const ChatInput: React.FC = () => {
         // 更新用户消息，添加健康行为数据
         updateMessageHealthBehavior(userMessageId, healthBehaviorData);
         
+        // 隐藏思考动画
+        setMessageAnimation(userMessageId, false);
+        
         if (healthBehaviorData.type === 'relevant') {
-          // 为该消息设置动画状态
-          setMessageAnimation(userMessageId, true);
-          // 设置等待显示营养卡片的消息ID（作为后备）
-          setPendingNutritionCard(userMessageId);
+          // 立即显示营养卡片（无需额外等待）
+          useChatStore.getState().showNutritionCardForMessage(userMessageId);
         }
       }
     );

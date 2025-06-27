@@ -20,7 +20,7 @@ class OpenRouterService:
         )
         
         # 默认模型（可以通过环境变量自定义）
-        self.default_model = os.getenv("DEFAULT_MODEL", "openai/gpt-4o-mini")  # 使用更经济的模型
+        self.default_model = os.getenv("CHAT_MODEL", "openai/gpt-4o-mini")  # 使用更经济的模型
         
     async def chat_completion_stream(
         self, 

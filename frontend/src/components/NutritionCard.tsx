@@ -15,23 +15,39 @@ const NutritionCard: React.FC<NutritionCardProps> = ({
   onDelete 
 }) => {
   const getMealTypeLabel = (mealType: string) => {
-    const labels = {
-      breakfast: '早餐',
-      lunch: '午餐', 
-      dinner: '晚餐',
-      snack: '零食'
+    // 新的餐次类型映射，支持中文枚举值
+    const labels: { [key: string]: string } = {
+      '早餐': '早餐',
+      '上午加餐': '上午加餐',
+      '午餐': '午餐',
+      '下午加餐': '下午加餐',
+      '晚餐': '晚餐',
+      '夜宵': '夜宵',
+      // 保持向后兼容英文值
+      'breakfast': '早餐',
+      'lunch': '午餐', 
+      'dinner': '晚餐',
+      'snack': '零食'
     };
-    return labels[mealType as keyof typeof labels] || '餐点';
+    return labels[mealType] || '餐点';
   };
 
   const getMealIcon = (mealType: string) => {
-    const icons = {
-      breakfast: '🌅',
-      lunch: '🌞',
-      dinner: '🌙',
-      snack: '🍪'
+    // 新的餐次类型图标映射
+    const icons: { [key: string]: string } = {
+      '早餐': '🌅',
+      '上午加餐': '☕',
+      '午餐': '🌞',
+      '下午加餐': '🍎',
+      '晚餐': '🌙',
+      '夜宵': '🌃',
+      // 保持向后兼容英文值
+      'breakfast': '🌅',
+      'lunch': '🌞',
+      'dinner': '🌙',
+      'snack': '🍪'
     };
-    return icons[mealType as keyof typeof icons] || '🍽️';
+    return icons[mealType] || '🍽️';
   };
 
   return (

@@ -1,138 +1,163 @@
-import random
+import json
+import logging
+from datetime import datetime
 from typing import Dict, Any, Optional
-from dataclasses import dataclass
+import pytz
+from openai import OpenAI
+from .health_behavior_schema import HEALTH_BEHAVIOR_SCHEMA, HEALTH_BEHAVIOR_PROMPT_TEMPLATE, SYSTEM_PROMPT
+from .config import OPENROUTER_API_KEY, OPENROUTER_BASE_URL, HEALTH_DETECTION_MODEL
 
-@dataclass
-class NutritionData:
-    """营养数据结构"""
-    food_name: str
-    calories: int  # 卡路里
-    protein: float  # 蛋白质(g)
-    carbs: float   # 碳水化合物(g)
-    fat: float     # 脂肪(g)
-    meal_type: str  # 餐次类型：breakfast, lunch, dinner, snack
-
-@dataclass
-class HealthBehaviorResult:
-    """健康行为检测结果"""
-    type: str  # 'relevant' 或 'unrelevant'
-    nutrition_data: Optional[NutritionData] = None
-    confidence: float = 0.0  # 置信度
-    detected_keywords: list = None  # 检测到的关键词
+# 设置日志
+logger = logging.getLogger(__name__)
 
 class HealthBehaviorService:
-    """健康行为检测服务"""
+    """健康行为检测服务 - 使用大模型结构化输出"""
     
     def __init__(self):
-        # Mock食物数据库
-        self.food_database = {
-            "瑞幸咖啡": {"calories": 32, "protein": 1.2, "carbs": 5.0, "fat": 1.6},
-            "咖啡": {"calories": 32, "protein": 1.2, "carbs": 5.0, "fat": 1.6},
-            "拿铁": {"calories": 150, "protein": 8.0, "carbs": 12.0, "fat": 8.0},
-            "美式咖啡": {"calories": 15, "protein": 0.5, "carbs": 2.0, "fat": 0.2},
-            "苹果": {"calories": 95, "protein": 0.5, "carbs": 25.0, "fat": 0.3},
-            "香蕉": {"calories": 105, "protein": 1.3, "carbs": 27.0, "fat": 0.4},
-            "米饭": {"calories": 130, "protein": 2.7, "carbs": 28.0, "fat": 0.3},
-            "鸡胸肉": {"calories": 165, "protein": 31.0, "carbs": 0.0, "fat": 3.6},
-            "沙拉": {"calories": 50, "protein": 2.0, "carbs": 10.0, "fat": 1.0},
-            "酸奶": {"calories": 100, "protein": 6.0, "carbs": 12.0, "fat": 3.0},
-        }
+        # 初始化OpenAI客户端，配置为使用OpenRouter
+        self.client = OpenAI(
+            api_key=OPENROUTER_API_KEY,
+            base_url=OPENROUTER_BASE_URL
+        )
         
-        # 健康行为关键词
-        self.health_keywords = [
-            "吃了", "喝了", "吃", "喝", "早餐", "午餐", "晚餐", "夜宵",
-            "运动", "跑步", "散步", "睡觉", "睡眠", "喝水", "锻炼",
-            "健身", "瑜伽", "游泳", "骑车"
-        ]
+        # 配置使用的模型（支持结构化输出的模型）
+        self.model = HEALTH_DETECTION_MODEL
+        
+        # 北京时区
+        self.beijing_tz = pytz.timezone('Asia/Shanghai')
     
-    def detect_health_behavior(self, user_input: str) -> HealthBehaviorResult:
+    async def detect_health_behavior(self, user_input: str) -> Dict[str, Any]:
         """
-        检测用户输入是否涉及健康行为
-        当前使用Mock逻辑：50%概率返回relevant
+        使用大模型检测用户输入是否涉及健康行为
+        返回结构化的检测结果
         """
-        # Mock逻辑：随机判断
-        is_relevant = random.choice([True, False])
-        
-        if not is_relevant:
-            return HealthBehaviorResult(
-                type="unrelevant",
-                confidence=0.3
+        try:
+            # 获取当前北京时间
+            current_time = datetime.now(self.beijing_tz)
+            time_str = current_time.strftime("%Y-%m-%d %H:%M:%S")
+            
+            # 构建提示词
+            prompt = HEALTH_BEHAVIOR_PROMPT_TEMPLATE.format(
+                current_time=time_str,
+                user_input=user_input
             )
-        
-        # 如果判断为相关，生成mock营养数据
-        nutrition_data = self._generate_mock_nutrition_data(user_input)
-        detected_keywords = self._extract_keywords(user_input)
-        
-        return HealthBehaviorResult(
-            type="relevant",
-            nutrition_data=nutrition_data,
-            confidence=0.8,
-            detected_keywords=detected_keywords
-        )
+            
+            logger.info(f"开始健康行为检测，用户输入: {user_input[:50]}...")
+            
+            # 调用大模型进行结构化输出
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": prompt}
+                ],
+                response_format={
+                    "type": "json_schema",
+                    "json_schema": {
+                        "name": "health_behavior_analysis",
+                        "strict": True,
+                        "schema": HEALTH_BEHAVIOR_SCHEMA
+                    }
+                },
+                temperature=0.1,  # 降低随机性，提高一致性
+                max_tokens=1000   # 控制输出长度
+            )
+            
+            # 解析结构化响应
+            result_text = response.choices[0].message.content
+            result = json.loads(result_text)
+            
+            logger.info(f"健康行为检测完成，类型: {result.get('type')}")
+            
+            # 验证结果完整性
+            self._validate_result(result)
+            
+            return result
+            
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON解析错误: {e}")
+            return self._get_fallback_result()
+            
+        except Exception as e:
+            logger.error(f"健康行为检测失败: {e}")
+            return self._get_fallback_result()
     
-    def _extract_keywords(self, text: str) -> list:
-        """提取健康相关关键词"""
-        found_keywords = []
-        for keyword in self.health_keywords:
-            if keyword in text:
-                found_keywords.append(keyword)
-        return found_keywords
+    def _validate_result(self, result: Dict[str, Any]) -> None:
+        """验证检测结果的完整性"""
+        if result.get('type') not in ['relevant', 'unrelevant']:
+            raise ValueError("Invalid type value")
+        
+        if result.get('type') == 'relevant':
+            nutrition_data = result.get('nutrition_data')
+            if not nutrition_data:
+                raise ValueError("Missing nutrition_data for relevant type")
+            
+            required_fields = ['food_name', 'calories', 'protein', 'carbs', 'fat', 'meal_type']
+            for field in required_fields:
+                if field not in nutrition_data:
+                    raise ValueError(f"Missing required field: {field}")
+            
+            # 验证meal_type是否在允许的值范围内
+            valid_meal_types = ["早餐", "上午加餐", "午餐", "下午加餐", "晚餐", "夜宵"]
+            if nutrition_data['meal_type'] not in valid_meal_types:
+                raise ValueError("Invalid meal_type value")
     
-    def _generate_mock_nutrition_data(self, user_input: str) -> NutritionData:
-        """根据用户输入生成mock营养数据"""
-        # 简单的食物识别逻辑
-        detected_food = None
-        for food_name in self.food_database.keys():
-            if food_name in user_input:
-                detected_food = food_name
-                break
-        
-        # 如果没有识别到具体食物，使用默认数据
-        if not detected_food:
-            detected_food = random.choice(list(self.food_database.keys()))
-        
-        food_data = self.food_database[detected_food]
-        
-        # 确定餐次类型
-        meal_type = self._determine_meal_type(user_input)
-        
-        return NutritionData(
-            food_name=detected_food,
-            calories=food_data["calories"],
-            protein=food_data["protein"],
-            carbs=food_data["carbs"],
-            fat=food_data["fat"],
-            meal_type=meal_type
-        )
-    
-    def _determine_meal_type(self, text: str) -> str:
-        """根据文本内容判断餐次类型"""
-        if any(word in text for word in ["早餐", "早上", "breakfast"]):
-            return "breakfast"
-        elif any(word in text for word in ["午餐", "中午", "lunch"]):
-            return "lunch"
-        elif any(word in text for word in ["晚餐", "晚上", "dinner"]):
-            return "dinner"
-        else:
-            return "snack"  # 默认为零食
-    
-    def format_result_for_api(self, result: HealthBehaviorResult) -> Dict[str, Any]:
-        """将检测结果格式化为API响应格式"""
-        response = {
-            "type": result.type,
-            "confidence": result.confidence
+    def _get_fallback_result(self) -> Dict[str, Any]:
+        """
+        在LLM调用失败时返回fallback结果
+        默认返回unrelevant，让用户流程继续
+        """
+        logger.warning("使用fallback结果：unrelevant")
+        return {
+            "type": "unrelevant",
+            "nutrition_data": None
         }
+    
+    def format_result_for_api(self, result: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        将检测结果格式化为API响应格式
+        保持与现有前端期望的数据结构一致
+        """
+        # 新的结构化输出已经是正确的格式，直接返回
+        return result
+    
+    def _get_current_meal_type_hint(self) -> str:
+        """
+        根据当前时间获取推荐的餐次类型（用于调试）
+        """
+        current_time = datetime.now(self.beijing_tz)
+        hour = current_time.hour
         
-        if result.type == "relevant" and result.nutrition_data:
-            nutrition = result.nutrition_data
-            response["nutrition_data"] = {
-                "food_name": nutrition.food_name,
-                "calories": nutrition.calories,
-                "protein": nutrition.protein,
-                "carbs": nutrition.carbs,
-                "fat": nutrition.fat,
-                "meal_type": nutrition.meal_type
-            }
-            response["detected_keywords"] = result.detected_keywords or []
-        
-        return response
+        if 6 <= hour < 9:
+            return "早餐"
+        elif 9 <= hour < 11:
+            return "上午加餐"
+        elif 11 <= hour < 14:
+            return "午餐"
+        elif 14 <= hour < 17:
+            return "下午加餐"
+        elif 17 <= hour < 21:
+            return "晚餐"
+        else:
+            return "夜宵"
+
+# 为了保持向后兼容，保留一些数据类（如果其他地方仍在使用）
+class NutritionData:
+    """营养数据结构 - 保持向后兼容"""
+    def __init__(self, food_name: str, calories: float, protein: float, 
+                 carbs: float, fat: float, meal_type: str):
+        self.food_name = food_name
+        self.calories = calories
+        self.protein = protein
+        self.carbs = carbs
+        self.fat = fat
+        self.meal_type = meal_type
+
+class HealthBehaviorResult:
+    """健康行为检测结果 - 保持向后兼容"""
+    def __init__(self, type: str, nutrition_data: Optional[Dict] = None, 
+                 confidence: float = 0.0, detected_keywords: list = None):
+        self.type = type
+        self.nutrition_data = nutrition_data
+        self.confidence = confidence
+        self.detected_keywords = detected_keywords or []

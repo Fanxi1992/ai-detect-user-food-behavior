@@ -6,14 +6,8 @@ interface HealthBehaviorAnimationProps {
 }
 
 const HealthBehaviorAnimation: React.FC<HealthBehaviorAnimationProps> = ({ onComplete }) => {
-  // 3秒后触发完成回调
-  React.useEffect(() => {
-    const timer = setTimeout(() => {
-      onComplete?.();
-    }, 3000);
-
-    return () => clearTimeout(timer);
-  }, [onComplete]);
+  // 移除自动触发逻辑，现在等待真实的LLM响应
+  // onComplete现在由父组件在收到health_behavior响应时调用
 
   return (
     <div className="health-behavior-animation">
@@ -23,11 +17,11 @@ const HealthBehaviorAnimation: React.FC<HealthBehaviorAnimationProps> = ({ onCom
           <div className="pulse-ring pulse-ring-delay-1"></div>
           <div className="pulse-ring pulse-ring-delay-2"></div>
           <div className="center-icon">
-            ⚡
+            🤔
           </div>
         </div>
         <div className="detection-text">
-          <h3>正在分析健康行为</h3>
+          <h3>正在思考中...</h3>
         </div>
         <div className="loading-dots">
           <span></span>

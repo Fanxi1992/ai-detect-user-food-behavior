@@ -12,9 +12,7 @@ export interface NutritionData {
 
 export interface HealthBehaviorData {
   type: 'relevant' | 'unrelevant';
-  nutrition_data?: NutritionData;
-  confidence: number;
-  detected_keywords?: string[];
+  nutrition_data?: NutritionData | null;
 }
 
 export interface Message {

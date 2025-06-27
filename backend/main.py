@@ -103,9 +103,8 @@ async def chat_stream(request: ChatRequest):
         
         async def generate_stream():
             try:
-                # 第一阶段：健康行为检测
-                behavior_result = health_behavior.detect_health_behavior(request.message)
-                behavior_data = health_behavior.format_result_for_api(behavior_result)
+                # 第一阶段：健康行为检测（使用真实LLM）
+                behavior_data = await health_behavior.detect_health_behavior(request.message)
                 
                 # 如果检测到健康行为，更新用户消息的健康行为数据
                 if behavior_data['type'] == 'relevant':
