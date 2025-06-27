@@ -63,8 +63,8 @@ const NutritionCard: React.FC<NutritionCardProps> = ({
       
       <div className="food-section">
         <div className="food-item">
-          <span className="food-icon">🥤</span>
-          <span className="food-name">1杯{nutritionData.food_name}</span>
+          <span className="food-icon">🍽️</span>
+          <span className="food-name">{nutritionData.food_name}</span>
         </div>
         
         <div className="calories-section">
