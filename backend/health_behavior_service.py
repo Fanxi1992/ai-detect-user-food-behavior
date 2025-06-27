@@ -4,8 +4,8 @@ from datetime import datetime
 from typing import Dict, Any, Optional
 import pytz
 from openai import OpenAI
-from .health_behavior_schema import HEALTH_BEHAVIOR_SCHEMA, HEALTH_BEHAVIOR_PROMPT_TEMPLATE, SYSTEM_PROMPT
-from .config import OPENROUTER_API_KEY, OPENROUTER_BASE_URL, HEALTH_DETECTION_MODEL
+from health_behavior_schema import HEALTH_BEHAVIOR_SCHEMA, HEALTH_BEHAVIOR_PROMPT_TEMPLATE, SYSTEM_PROMPT
+from config import OPENROUTER_API_KEY, OPENROUTER_BASE_URL, HEALTH_DETECTION_MODEL
 
 # 设置日志
 logger = logging.getLogger(__name__)

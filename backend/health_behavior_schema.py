@@ -40,7 +40,7 @@ HEALTH_BEHAVIOR_SCHEMA = {
                         }
                     },
                     "required": ["food_name", "calories", "protein", "carbs", "fat", "meal_type"],
-                    "additionalProperties": false
+                    "additionalProperties": False
                 },
                 {
                     "type": "null"
@@ -49,7 +49,7 @@ HEALTH_BEHAVIOR_SCHEMA = {
         }
     },
     "required": ["type", "nutrition_data"],
-    "additionalProperties": false
+    "additionalProperties": False
 }
 
 # 提示词模板
