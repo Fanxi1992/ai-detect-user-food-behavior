@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { v4 as uuidv4 } from 'uuid';
 import { useChatStore } from '../store/chatStore';
 import { ChatService } from '../services/chatService';
 
@@ -13,7 +14,11 @@ const ChatInput: React.FC = () => {
     addMessage, 
     startStreaming, 
     updateStreamingMessage, 
-    finishStreaming 
+    finishStreaming,
+    setHealthBehavior,
+    setShowingAnimation,
+    setPendingNutritionCard,
+    updateMessageHealthBehavior
   } = useChatStore();
 
   // 自动调整输入框高度
@@ -91,8 +96,21 @@ const ChatInput: React.FC = () => {
     const message = inputValue.trim();
     setInputValue('');
     
-    // 添加用户消息
-    addMessage(message, true);
+    // 生成消息ID并添加用户消息
+    const userMessageId = uuidv4();
+    
+    // 手动创建消息并添加到状态
+    const userMessage = {
+      id: userMessageId,
+      content: message,
+      isUser: true,
+      timestamp: new Date(),
+      showNutritionCard: false,
+    };
+    
+    // 直接调用store的内部方法来添加消息
+    const { messages } = useChatStore.getState();
+    useChatStore.setState({ messages: [...messages, userMessage] });
     
     // 开始流式响应
     startStreaming();
@@ -121,6 +139,23 @@ const ChatInput: React.FC = () => {
         
         addMessage(`❌ ${errorMessage}`, false);
         finishStreaming();
+        setShowingAnimation(false);
+        setPendingNutritionCard(null);
+      },
+      // 健康行为检测回调
+      (healthBehaviorData: any) => {
+        console.log('Health behavior detected:', healthBehaviorData);
+        setHealthBehavior(healthBehaviorData);
+        
+        // 更新用户消息，添加健康行为数据
+        updateMessageHealthBehavior(userMessageId, healthBehaviorData);
+        
+        if (healthBehaviorData.type === 'relevant') {
+          // 显示动画
+          setShowingAnimation(true);
+          // 设置等待显示营养卡片的消息ID
+          setPendingNutritionCard(userMessageId);
+        }
       }
     );
   };

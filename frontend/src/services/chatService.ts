@@ -6,8 +6,10 @@ export interface ChatRequest {
 }
 
 export interface StreamChunk {
-  content: string;
-  done: boolean;
+  type?: string;
+  content?: string;
+  done?: boolean;
+  data?: any; // 用于健康行为数据
 }
 
 export class ChatService {
@@ -16,7 +18,8 @@ export class ChatService {
     sessionId: string,
     onChunk: (chunk: string) => void,
     onComplete: () => void,
-    onError: (error: string) => void
+    onError: (error: string) => void,
+    onHealthBehavior?: (data: any) => void
   ): Promise<void> {
     try {
       const response = await fetch(`${API_BASE_URL}/api/chat/stream`, {
@@ -59,11 +62,27 @@ export class ChatService {
               
               const data: StreamChunk = JSON.parse(jsonStr);
               
-              if (data.done) {
-                onComplete();
-                return;
-              } else if (data.content) {
-                onChunk(data.content);
+              // 处理健康行为检测结果
+              if (data.type === 'health_behavior' && data.data) {
+                onHealthBehavior?.(data.data);
+              }
+              // 处理聊天消息流
+              else if (data.type === 'chat') {
+                if (data.done) {
+                  onComplete();
+                  return;
+                } else if (data.content) {
+                  onChunk(data.content);
+                }
+              }
+              // 兼容旧格式（没有type字段）
+              else if (!data.type) {
+                if (data.done) {
+                  onComplete();
+                  return;
+                } else if (data.content) {
+                  onChunk(data.content);
+                }
               }
             } catch (parseError) {
               console.warn('Failed to parse chunk:', line, parseError);

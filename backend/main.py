@@ -11,6 +11,7 @@ from typing import List, Optional
 from database import Database, Message as DBMessage
 from models import ChatRequest, ChatResponse, Message
 from openrouter_service import OpenRouterService
+from health_behavior_service import HealthBehaviorService
 
 app = FastAPI(title="AI Chatbot API", version="1.0.0")
 
@@ -23,9 +24,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 初始化数据库和OpenRouter服务
+# 初始化数据库、OpenRouter服务和健康行为检测服务
 db = Database()
 openrouter = OpenRouterService()
+health_behavior = HealthBehaviorService()
 
 @app.on_event("startup")
 async def startup_event():
@@ -101,6 +103,13 @@ async def chat_stream(request: ChatRequest):
         
         async def generate_stream():
             try:
+                # 第一阶段：健康行为检测
+                behavior_result = health_behavior.detect_health_behavior(request.message)
+                behavior_data = health_behavior.format_result_for_api(behavior_result)
+                
+                # 发送健康行为检测结果
+                yield f"data: {json.dumps({'type': 'health_behavior', 'data': behavior_data})}\n\n"
+                
                 # 获取对话历史
                 history = await db.get_messages(request.session_id, limit=10)
                 
@@ -114,8 +123,8 @@ async def chat_stream(request: ChatRequest):
                 # 检查API密钥是否配置
                 if not openrouter.is_api_key_configured():
                     error_msg = "⚠️ 请配置OPENROUTER_API_KEY环境变量以使用真实的AI模型"
-                    yield f"data: {json.dumps({'content': error_msg, 'done': False})}\n\n"
-                    yield f"data: {json.dumps({'content': '', 'done': True})}\n\n"
+                    yield f"data: {json.dumps({'type': 'chat', 'content': error_msg, 'done': False})}\n\n"
+                    yield f"data: {json.dumps({'type': 'chat', 'content': '', 'done': True})}\n\n"
                     
                     # 保存错误消息
                     await db.save_message(
@@ -125,13 +134,13 @@ async def chat_stream(request: ChatRequest):
                     )
                     return
                 
-                # 调用OpenRouter流式API
+                # 第二阶段：调用OpenRouter流式API进行正常聊天
                 full_response = ""
                 async for chunk in openrouter.chat_completion_stream(messages):
                     if chunk:
                         full_response += chunk
-                        # 发送数据块
-                        yield f"data: {json.dumps({'content': chunk, 'done': False})}\n\n"
+                        # 发送聊天数据块（标记为chat类型）
+                        yield f"data: {json.dumps({'type': 'chat', 'content': chunk, 'done': False})}\n\n"
                 
                 # 保存完整的AI回复
                 if full_response.strip():
@@ -141,13 +150,13 @@ async def chat_stream(request: ChatRequest):
                         is_user=False
                     )
                 
-                # 发送结束标志
-                yield f"data: {json.dumps({'content': '', 'done': True})}\n\n"
+                # 发送聊天结束标志
+                yield f"data: {json.dumps({'type': 'chat', 'content': '', 'done': True})}\n\n"
                 
             except Exception as stream_error:
                 error_message = f"❌ 流式处理错误: {str(stream_error)}"
-                yield f"data: {json.dumps({'content': error_message, 'done': False})}\n\n"
-                yield f"data: {json.dumps({'content': '', 'done': True})}\n\n"
+                yield f"data: {json.dumps({'type': 'chat', 'content': error_message, 'done': False})}\n\n"
+                yield f"data: {json.dumps({'type': 'chat', 'content': '', 'done': True})}\n\n"
                 
                 # 保存错误消息
                 await db.save_message(
