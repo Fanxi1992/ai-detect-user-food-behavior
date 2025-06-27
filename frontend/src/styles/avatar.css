@@ -1,0 +1,72 @@
+.avatar {
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: white;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border: 2px solid rgba(255, 255, 255, 0.9);
+}
+
+/* 尺寸变体 */
+.avatar-small {
+  width: 24px;
+  height: 24px;
+}
+
+.avatar-small .avatar-icon {
+  font-size: 12px;
+}
+
+.avatar-medium {
+  width: 32px;
+  height: 32px;
+}
+
+.avatar-medium .avatar-icon {
+  font-size: 16px;
+}
+
+.avatar-large {
+  width: 40px;
+  height: 40px;
+}
+
+.avatar-large .avatar-icon {
+  font-size: 20px;
+}
+
+/* 类型变体 */
+.avatar-user {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.avatar-ai {
+  background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
+}
+
+.avatar-health {
+  background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+}
+
+/* 图标样式 */
+.avatar-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+/* 悬停效果 */
+.avatar:hover {
+  transform: scale(1.05);
+  transition: transform 0.2s ease;
+}
+
+/* 动画效果 */
+.avatar {
+  transition: all 0.2s ease;
+}

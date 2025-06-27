@@ -20,8 +20,11 @@ const ChatContainer: React.FC = () => {
           content: msg.content,
           isUser: msg.is_user,
           timestamp: new Date(msg.timestamp),
-          showNutritionCard: false,
-          showAnimation: false,
+          // 恢复健康行为数据
+          healthBehavior: msg.health_behavior_data || undefined,
+          // 如果有健康行为数据且类型为relevant，则显示营养卡片
+          showNutritionCard: msg.health_behavior_data?.type === 'relevant' && !!msg.health_behavior_data?.nutrition_data,
+          showAnimation: false, // 历史记录不显示动画
         }));
         setMessages(messages);
       } catch (err) {

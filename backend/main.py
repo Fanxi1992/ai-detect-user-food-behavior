@@ -95,7 +95,7 @@ async def chat_stream(request: ChatRequest):
     """流式聊天接口"""
     try:
         # 保存用户消息
-        await db.save_message(
+        user_message = await db.save_message(
             session_id=request.session_id,
             content=request.message,
             is_user=True
@@ -106,6 +106,10 @@ async def chat_stream(request: ChatRequest):
                 # 第一阶段：健康行为检测
                 behavior_result = health_behavior.detect_health_behavior(request.message)
                 behavior_data = health_behavior.format_result_for_api(behavior_result)
+                
+                # 如果检测到健康行为，更新用户消息的健康行为数据
+                if behavior_data['type'] == 'relevant':
+                    await db.update_message_health_behavior(user_message.id, behavior_data)
                 
                 # 发送健康行为检测结果
                 yield f"data: {json.dumps({'type': 'health_behavior', 'data': behavior_data})}\n\n"
@@ -182,14 +186,23 @@ async def get_recent_chat_history(limit: int = 20) -> List[Message]:
     """获取最近的聊天历史（全局）"""
     try:
         messages = await db.get_recent_messages(limit)
-        return [
-            Message(
+        result = []
+        for msg in messages:
+            # 解析健康行为数据JSON
+            health_behavior_data = None
+            if msg.health_behavior_data:
+                try:
+                    health_behavior_data = json.loads(msg.health_behavior_data)
+                except json.JSONDecodeError:
+                    health_behavior_data = None
+            
+            result.append(Message(
                 content=msg.content,
                 is_user=msg.is_user,
-                timestamp=msg.timestamp
-            )
-            for msg in messages
-        ]
+                timestamp=msg.timestamp,
+                health_behavior_data=health_behavior_data
+            ))
+        return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -198,14 +211,23 @@ async def get_chat_history(session_id: str) -> List[Message]:
     """获取特定会话的聊天历史"""
     try:
         messages = await db.get_messages(session_id)
-        return [
-            Message(
+        result = []
+        for msg in messages:
+            # 解析健康行为数据JSON
+            health_behavior_data = None
+            if msg.health_behavior_data:
+                try:
+                    health_behavior_data = json.loads(msg.health_behavior_data)
+                except json.JSONDecodeError:
+                    health_behavior_data = None
+            
+            result.append(Message(
                 content=msg.content,
                 is_user=msg.is_user,
-                timestamp=msg.timestamp
-            )
-            for msg in messages
-        ]
+                timestamp=msg.timestamp,
+                health_behavior_data=health_behavior_data
+            ))
+        return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

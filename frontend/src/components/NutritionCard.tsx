@@ -1,5 +1,6 @@
 import React from 'react';
-import { NutritionData } from '../store/chatStore';
+import { type NutritionData } from '../store/chatStore';
+import Avatar from './Avatar';
 import '../styles/nutrition-card.css';
 
 interface NutritionCardProps {
@@ -34,13 +35,15 @@ const NutritionCard: React.FC<NutritionCardProps> = ({
   };
 
   return (
-    <div className="nutrition-card">
-      <div className="nutrition-header">
-        <div className="meal-info">
-          <span className="meal-icon">{getMealIcon(nutritionData.meal_type)}</span>
-          <span className="meal-type">{getMealTypeLabel(nutritionData.meal_type)}+1</span>
+    <div className="nutrition-card-wrapper">
+      <Avatar type="health" size="medium" />
+      <div className="nutrition-card">
+        <div className="nutrition-header">
+          <div className="meal-info">
+            <span className="meal-icon">{getMealIcon(nutritionData.meal_type)}</span>
+            <span className="meal-type">{getMealTypeLabel(nutritionData.meal_type)}+1</span>
+          </div>
         </div>
-      </div>
       
       <div className="food-section">
         <div className="food-item">
@@ -84,6 +87,7 @@ const NutritionCard: React.FC<NutritionCardProps> = ({
         >
           修改记录
         </button>
+      </div>
       </div>
     </div>
   );
