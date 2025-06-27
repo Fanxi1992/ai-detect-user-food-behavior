@@ -48,8 +48,7 @@ class OpenRouterService:
                 if chunk.choices[0].delta.content is not None:
                     content = chunk.choices[0].delta.content
                     yield content
-                    # 添加小延迟以模拟真实的流式体验
-                    await asyncio.sleep(0.01)
+                    # 移除人为延迟以提高响应速度
                     
         except Exception as e:
             error_message = f"OpenRouter API调用失败: {str(e)}"
