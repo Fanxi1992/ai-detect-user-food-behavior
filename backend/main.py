@@ -168,9 +168,25 @@ async def chat_stream(request: ChatRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/api/chat/history/recent")
+async def get_recent_chat_history(limit: int = 20) -> List[Message]:
+    """获取最近的聊天历史（全局）"""
+    try:
+        messages = await db.get_recent_messages(limit)
+        return [
+            Message(
+                content=msg.content,
+                is_user=msg.is_user,
+                timestamp=msg.timestamp
+            )
+            for msg in messages
+        ]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/api/chat/history/{session_id}")
 async def get_chat_history(session_id: str) -> List[Message]:
-    """获取聊天历史"""
+    """获取特定会话的聊天历史"""
     try:
         messages = await db.get_messages(session_id)
         return [
@@ -184,9 +200,18 @@ async def get_chat_history(session_id: str) -> List[Message]:
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.delete("/api/chat/history/all")
+async def clear_all_chat_history():
+    """清空所有聊天历史"""
+    try:
+        await db.clear_all_messages()
+        return {"message": "All chat history cleared successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.delete("/api/chat/history/{session_id}")
 async def clear_chat_history(session_id: str):
-    """清空聊天历史"""
+    """清空特定会话的聊天历史"""
     try:
         await db.clear_messages(session_id)
         return {"message": "Chat history cleared successfully"}

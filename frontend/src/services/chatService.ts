@@ -77,6 +77,21 @@ export class ChatService {
     }
   }
 
+  static async getRecentChatHistory(limit: number = 20): Promise<any[]> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/chat/history/recent?limit=${limit}`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to fetch recent chat history:', error);
+      return [];
+    }
+  }
+
   static async getChatHistory(sessionId: string): Promise<any[]> {
     try {
       const response = await fetch(`${API_BASE_URL}/api/chat/history/${sessionId}`);
@@ -89,6 +104,21 @@ export class ChatService {
     } catch (error) {
       console.error('Failed to fetch chat history:', error);
       return [];
+    }
+  }
+
+  static async clearAllChatHistory(): Promise<void> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/chat/history/all`, {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+    } catch (error) {
+      console.error('Failed to clear all chat history:', error);
+      throw error;
     }
   }
 

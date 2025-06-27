@@ -9,12 +9,12 @@ const ChatContainer: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // 加载历史消息
+  // 加载最近的聊天历史（全局）
   useEffect(() => {
     const loadHistory = async () => {
       try {
         setIsLoading(true);
-        const history = await ChatService.getChatHistory(sessionId);
+        const history = await ChatService.getRecentChatHistory(20);
         const messages = history.map((msg: any) => ({
           id: msg.id || Math.random().toString(),
           content: msg.content,
@@ -31,16 +31,16 @@ const ChatContainer: React.FC = () => {
     };
 
     loadHistory();
-  }, [sessionId, setMessages]);
+  }, [setMessages]); // 移除 sessionId 依赖，因为我们现在加载全局历史
 
   const handleClearChat = async () => {
-    if (window.confirm('确定要清空聊天记录吗？')) {
+    if (window.confirm('确定要清空所有聊天记录吗？此操作将删除数据库中的所有历史记录。')) {
       try {
-        await ChatService.clearChatHistory(sessionId);
+        await ChatService.clearAllChatHistory();
         clearChat();
         setError(null);
       } catch (err) {
-        console.error('Failed to clear chat history:', err);
+        console.error('Failed to clear all chat history:', err);
         setError('清空聊天历史失败');
       }
     }

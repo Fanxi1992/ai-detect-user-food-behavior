@@ -73,6 +73,34 @@ class Database:
             await db.execute("DELETE FROM messages WHERE session_id = ?", (session_id,))
             await db.commit()
     
+    async def clear_all_messages(self):
+        """清空所有消息"""
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute("DELETE FROM messages")
+            await db.commit()
+    
+    async def get_recent_messages(self, limit: int = 20) -> List[Message]:
+        """获取全局最近的消息列表"""
+        async with aiosqlite.connect(self.db_path) as db:
+            cursor = await db.execute(
+                "SELECT id, session_id, content, is_user, timestamp FROM messages ORDER BY timestamp DESC LIMIT ?",
+                (limit,)
+            )
+            rows = await cursor.fetchall()
+            
+            messages = []
+            for row in rows:
+                messages.append(Message(
+                    id=row[0],
+                    session_id=row[1],
+                    content=row[2],
+                    is_user=bool(row[3]),
+                    timestamp=datetime.fromisoformat(row[4])
+                ))
+            
+            # 返回时间正序排列（最早的在前面）
+            return list(reversed(messages))
+    
     async def get_all_sessions(self) -> List[str]:
         """获取所有会话ID"""
         async with aiosqlite.connect(self.db_path) as db:
