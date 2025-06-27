@@ -18,7 +18,8 @@ const ChatInput: React.FC = () => {
     setHealthBehavior,
     setShowingAnimation,
     setPendingNutritionCard,
-    updateMessageHealthBehavior
+    updateMessageHealthBehavior,
+    setMessageAnimation
   } = useChatStore();
 
   // 自动调整输入框高度
@@ -106,6 +107,7 @@ const ChatInput: React.FC = () => {
       isUser: true,
       timestamp: new Date(),
       showNutritionCard: false,
+      showAnimation: false,
     };
     
     // 直接调用store的内部方法来添加消息
@@ -151,9 +153,9 @@ const ChatInput: React.FC = () => {
         updateMessageHealthBehavior(userMessageId, healthBehaviorData);
         
         if (healthBehaviorData.type === 'relevant') {
-          // 显示动画
-          setShowingAnimation(true);
-          // 设置等待显示营养卡片的消息ID
+          // 为该消息设置动画状态
+          setMessageAnimation(userMessageId, true);
+          // 设置等待显示营养卡片的消息ID（作为后备）
           setPendingNutritionCard(userMessageId);
         }
       }

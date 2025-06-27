@@ -12,7 +12,8 @@ const MessageList: React.FC = () => {
     isStreaming, 
     showingAnimation,
     pendingNutritionCard,
-    showNutritionCardForMessage 
+    showNutritionCardForMessage,
+    setMessageAnimation
   } = useChatStore();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -26,8 +27,12 @@ const MessageList: React.FC = () => {
   }, [messages, currentStreamingMessage, showingAnimation]);
 
   // 处理动画完成，显示营养卡片
-  const handleAnimationComplete = () => {
-    if (pendingNutritionCard) {
+  const handleAnimationComplete = (messageId?: string) => {
+    if (messageId) {
+      // 消息级动画完成
+      showNutritionCardForMessage(messageId);
+    } else if (pendingNutritionCard) {
+      // 全局动画完成（后备逻辑）
       showNutritionCardForMessage(pendingNutritionCard);
     }
   };
@@ -55,6 +60,10 @@ const MessageList: React.FC = () => {
       {messages.map((message) => (
         <div key={message.id}>
           <MessageBubble message={message} />
+          {/* 如果该消息需要显示动画 */}
+          {message.showAnimation && (
+            <HealthBehaviorAnimation onComplete={() => handleAnimationComplete(message.id)} />
+          )}
           {/* 如果消息有健康行为数据且需要显示营养卡片 */}
           {message.healthBehavior?.type === 'relevant' && 
            message.showNutritionCard && 
@@ -68,8 +77,8 @@ const MessageList: React.FC = () => {
         </div>
       ))}
       
-      {/* 显示健康行为检测动画 */}
-      {showingAnimation && (
+      {/* 保留全局动画作为后备（可以后续删除） */}
+      {showingAnimation && !messages.some(msg => msg.showAnimation) && (
         <HealthBehaviorAnimation onComplete={handleAnimationComplete} />
       )}
       

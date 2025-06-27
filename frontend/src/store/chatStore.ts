@@ -24,6 +24,7 @@ export interface Message {
   timestamp: Date;
   healthBehavior?: HealthBehaviorData;
   showNutritionCard?: boolean;
+  showAnimation?: boolean; // 是否显示动画
 }
 
 interface ChatState {
@@ -49,6 +50,7 @@ interface ChatState {
   setPendingNutritionCard: (messageId: string | null) => void;
   showNutritionCardForMessage: (messageId: string) => void;
   updateMessageHealthBehavior: (messageId: string, healthBehavior: HealthBehaviorData) => void;
+  setMessageAnimation: (messageId: string, showAnimation: boolean) => void;
 }
 
 export const useChatStore = create<ChatState>((set, get) => ({
@@ -69,6 +71,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       timestamp: new Date(),
       healthBehavior,
       showNutritionCard: false,
+      showAnimation: false,
     };
     
     set((state) => ({
@@ -139,11 +142,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
     set((state) => ({
       messages: state.messages.map(msg => 
         msg.id === messageId 
-          ? { ...msg, showNutritionCard: true }
+          ? { ...msg, showNutritionCard: true, showAnimation: false }
           : msg
       ),
       pendingNutritionCard: null,
-      showingAnimation: false, // 关闭动画状态
+      showingAnimation: false, // 关闭全局动画状态
     }));
   },
   
@@ -152,6 +155,16 @@ export const useChatStore = create<ChatState>((set, get) => ({
       messages: state.messages.map(msg => 
         msg.id === messageId 
           ? { ...msg, healthBehavior }
+          : msg
+      ),
+    }));
+  },
+  
+  setMessageAnimation: (messageId: string, showAnimation: boolean) => {
+    set((state) => ({
+      messages: state.messages.map(msg => 
+        msg.id === messageId 
+          ? { ...msg, showAnimation }
           : msg
       ),
     }));

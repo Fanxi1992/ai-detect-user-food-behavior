@@ -20,6 +20,8 @@ const ChatContainer: React.FC = () => {
           content: msg.content,
           isUser: msg.is_user,
           timestamp: new Date(msg.timestamp),
+          showNutritionCard: false,
+          showAnimation: false,
         }));
         setMessages(messages);
       } catch (err) {
