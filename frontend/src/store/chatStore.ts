@@ -143,6 +143,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
           : msg
       ),
       pendingNutritionCard: null,
+      showingAnimation: false, // 关闭动画状态
     }));
   },
   
