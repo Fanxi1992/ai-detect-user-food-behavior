@@ -23,17 +23,16 @@ const HealthBehaviorAnimation: React.FC<HealthBehaviorAnimationProps> = ({ onCom
           <div className="pulse-ring pulse-ring-delay-1"></div>
           <div className="pulse-ring pulse-ring-delay-2"></div>
           <div className="center-icon">
-            🍎
+            ⚡
           </div>
         </div>
         <div className="detection-text">
-          <h3>检测到您的健康行为</h3>
-          <p>正在为您进行打卡统计...</p>
-          <div className="loading-dots">
-            <span></span>
-            <span></span>
-            <span></span>
-          </div>
+          <h3>正在分析健康行为</h3>
+        </div>
+        <div className="loading-dots">
+          <span></span>
+          <span></span>
+          <span></span>
         </div>
       </div>
     </div>
